@@ -1,0 +1,345 @@
+
+<!DOCTYPE html>
+<html lang="eng">
+    <head>
+        <title>Shortcut Ninja</title>
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.2.0/css/all.css" integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" href="./mainWindow.css">
+        
+        
+    </head>
+    <body>
+        <a class="navbar-brand" href="#">Shortcut Ninja</a>
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+              <a class="nav-link active" href="#">Gameboard</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">References</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Stats</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link disabled" href="#">Disabled</a>
+            </li>
+          </ul>
+        <div id="main">
+          <div class="row">
+            <div class="col-sm-4">
+                <table class="scorecard">
+                    <thead>
+                      <tr>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Selected Library:</td>
+                        <td>{{message}}</td>
+                      </tr>
+                      <tr>
+                        <td>Correct Answers:</td>
+                        <td id="correctAnswer">/14</td>
+                      </tr>
+                  </tbody>
+                </table>
+            </div>
+            <div class="col-sm-4">
+                <div class="command-display__container">
+                  <div class="command-display__background">
+                    <div id="command-display__text"></div>
+                    <p id="correct">Correct!</p>
+                    <p id="incorrect">Incorrect!</p>
+                  </div>
+                </div>
+            </div>
+            <div class="wrapper">
+            <button id="startButton" onclick="start()">Start Game</button>
+          </div>
+            <!--TRYING-->
+            <div class="col-sm-4">
+                <table class="helpcard" id="help" *ngIf="playerReady">
+                    <thead>
+                      <tr>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><i class="fa fa-question-circle hint" title="Press H to see hint">Stuck? Press "H" to Get a Hint</i></td>
+                        <td></td>
+                      </tr>
+                      <tr>
+                        <td id="answer" *ngIf="help"></td>
+                        <td id="hint"></td>
+                      </tr>
+                  </tbody>
+                </table>
+            </div>
+            <!--
+            <div class="col-sm-4">
+              <table class="hintCard" id="help" *ngIf="playerReady">
+                  <thead>
+                      <tr>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <tr>
+                          <td>
+                              <i class="fa fa-question-circle hint" title="Press H to see hint">Stuck? Press "H" to Get a Hint</i>
+                          </td>
+                          <br>
+                          <td id="answer" *ngIf="help">
+                            {{hint}}
+                          </td>
+                        </tr>
+                    </tbody> 
+                  </table>
+            </div>
+          </div>
+          -->
+        </div><!-- /row -->
+      <br>
+        <!-- Change the text to your liking -->
+      <div id="board">
+        <!-- <div *ngIf="!playerReady" id="content">
+          <p id="title">Keyboard Shortcut Ninja Game</p>
+          <p id="subtitle">Press any key to begin</p>
+        </div> -->
+      </div>
+      </div>
+
+
+
+<script>
+  const electron = require("electron");
+  const { ipcRenderer } = electron;
+  const button = document.querySelector('button');
+  const questionHistory = [];
+  let playerReady = false; 
+  let currentShortcut = {};
+  let keydownMap = [];
+  const answer = '';
+  let help = false;
+  let hintCounter = 0;
+  let hint = '';
+  let success = false;
+  let failure = false;
+  let failureMessage = "Incorrect";
+  let successMessage="Correct";
+  let startButton = document.getElementById("startButton");
+  let displayText = true;
+  let score = 0;
+
+  
+   photoShopCommands =  [
+    {
+      name: 'Intersect with a selection',
+      key: [16, 18],
+      answer: ['Shift', ' Alt']
+    },
+    {
+      name: 'Hide/Show all panels except Tools panel and Options bar',
+      key: [16, 9],
+      answer: ['Shift', ' Tab']
+    },
+    {
+      name: 'Scroll image left in window',
+      key: [17, 16, 38],
+      answer: ['Ctrl', ' Shift', ' PageUp']
+    },
+    {
+      name: 'Fill selection with Background color',
+      key: [17, 8],
+      answer: ['Ctrl', ' Backspace']
+    },
+    {
+      name: 'Fill selection with source state in History panel',
+      key: [17, 18, 8],
+      answer: ['Ctrl', ' Alt', ' Backspace']
+
+    },
+    {
+      name: 'Decrease/Increase hardness of brush',
+      key: [16, 189],
+      answer: ['Shift', ' –']
+    },
+    {
+      name: 'Undo or Redo operations beyond last one',
+      key: [17, 18, 90],
+      answer: ['Ctrl', ' Alt', ' Z']
+    },
+  ];
+
+
+function start(){
+    startButton.remove();
+     getRandomCommand();
+     startNextQuestion();
+  document.addEventListener('keydown', function(event) {
+   if(event.keyCode === 72 && event.type === 'keydown') {
+      showHint();
+      console.log("hint hit");
+    } else if (isShortcutOnlyOneKey(currentShortcut)) {
+      if (event.keyCode === currentShortcut.key[0]) {
+        console.log('User pressed ' + event.keyCode);
+        console.log('Tot lam!');
+        showSuccessMessage();
+        addToCorrectScoreCounter();
+        startNextQuestion();
+      } else {
+        console.log('User pressed ' + event.keyCode + ' which is incorrect');
+        console.log('USTED NO BUENO');
+        this.showFailureMessage();
+        this.startNextQuestion();
+      }
+    } else if (isShortcutMultipleKeys(currentShortcut)) {
+      const shortcutLen = currentShortcut.key.length;
+      console.log("this is the multikey shortcut length" + shortcutLen);
+      // add to the keydown map
+      if (event.type === 'keydown' && keydownMap[keydownMap.length - 1] !== event.keyCode) {
+        keydownMap.push(event.keyCode);
+      }
+      console.log('The Keydown Map:', keydownMap);
+      // check if the keydown map has all the needed keys
+      //I removed keypress down from line 183
+      if (keydownMap.length === shortcutLen) {
+        evaluateAnswer();
+      }
+    }
+    playerReady = true;
+    console.log("this is the current score" + score);
+    
+    
+  })
+  
+  }
+
+ 
+
+
+ function startNextQuestion() {
+    currentShortcut = getRandomCommand();
+    document.getElementById("command-display__text").innerHTML = currentShortcut.name;
+    console.log('Current Shortcut: ');
+    console.log(currentShortcut);
+    let dupeCheck = false;
+    if (questionHistory.length > 2) {
+      for (let i = questionHistory.length - 2; i < questionHistory.length; i++) {
+        const currentCommandInLoop = questionHistory[i];
+        if (currentCommandInLoop.name === currentShortcut.name) {
+          dupeCheck = true;
+          console.log('Found a dupe!');
+          startNextQuestion();
+          break;
+        }
+      }
+    }
+    if (dupeCheck === false) {
+      questionHistory.push(currentShortcut);
+    }
+  }
+
+   function getRandomCommand() {
+      const rando = Math.floor( Math.random() * photoShopCommands.length );
+      //console.log('Current Shortcut: ' + currentShortcut.command);
+      return photoShopCommands[rando];
+    }
+
+//hint not working.only shows first hint
+ function showHint() {
+    console.log('CLICKED HINT!');
+    help = true;
+    if (hintCounter < currentShortcut.answer.length) {
+      hint = hint + currentShortcut.answer[hintCounter];
+      document.getElementById("hint").innerHTML = hint;
+    }
+ }
+
+
+  function isShortcutOnlyOneKey(shortcut) {
+    // shortcuts have a key and name properties
+    return (shortcut.key.length === 1);
+  }
+  
+  function isShortcutMultipleKeys(shortcut) {
+    // shortcuts have a key and name properties
+    return (shortcut.key.length > 1);
+  }
+  
+  function isKeydownMapCorrect(kdm, cs) {
+    // kdm = keydownMap, cs = currentShortcut
+    let correctCheck = true;
+    for (let i = 0; i < kdm.length; i++) {
+      const currentKeydown = kdm[i];
+      const currentShortcutKey = cs.key[i];
+      if (currentKeydown !== currentShortcutKey) {
+        correctCheck = false;
+        break;
+      }
+    }
+    console.log('Keydown map was ' + correctCheck);
+    return correctCheck;
+  }
+
+  function evaluateAnswer() {
+    console.log("Evaluate answer fired");
+    if (isKeydownMapCorrect(keydownMap, currentShortcut)) {
+      clearTheKeydownMap();
+      showSuccessMessage();
+      addToCorrectScoreCounter();
+      startNextQuestion();
+      console.log('current keydownmap' + keydownMap);
+    } else {
+      showFailureMessage();
+      clearTheKeydownMap();
+      startNextQuestion();
+      console.log('current keydownmap' + keydownMap);
+    }
+  }
+
+  function showSuccessMessage() {
+    document.getElementById("command-display__text").style.display = "none";
+    document.getElementById('correct').style.display = "block";
+    setTimeout(() => {
+    document.getElementById("command-display__text").style.display = "block";
+    document.getElementById('correct').style.display = "none";
+     }, 1500);
+  }
+  console.log("correct!");
+
+
+  function showFailureMessage() {
+    let failure = true;
+    let displayText = false;
+    document.getElementById("command-display__text").style.display = "none";
+    document.getElementById('incorrect').style.display = "block";
+    setTimeout(() => {
+    document.getElementById("command-display__text").style.display = "block";
+    document.getElementById("incorrect").style.display = "none";
+     }, 1500);
+  }
+
+  function addToCorrectScoreCounter() {
+    score++;
+    document.getElementById("correctAnswer").innerHTML = score + "/14";
+    
+  }
+  
+  function clearTheKeydownMap() {
+      keydownMap = [];
+    }
+
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
